@@ -9,6 +9,8 @@ import { authApiService } from '../services/authApi';
 import { specialtiesApiService, Specialty } from '../services/specialtiesApi';
 import { User } from '../types/auth';
 
+
+
 type AppointmentFormProps = {
    onSubmit: (appointment: {
       doctorId: string;
@@ -17,6 +19,14 @@ type AppointmentFormProps = {
       description: string;
    }) => void;
 };
+
+// ESTADOS para dados da API
+const [doctors, setDoctors] = useState<User[]>([]);
+const [specialties, setSpecialties] = useState<string[]>([]);
+const [selectedSpecialty, setSelectedSpecialty] = useState<string>('');
+const [loading, setLoading] = useState(true);
+
+
 
 const generateTimeSlots = () => {
    const slots = [];
@@ -46,52 +56,51 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({ onSubmit }) => {
       loadInitialData();
    }, []);
 
-   // Carrega médicos quando uma especialidade é selecionada
-   useEffect(() => {
-      if (selectedSpecialty) {
-         loadDoctorsBySpecialty(selectedSpecialty);
-      } else {
-         loadAllDoctors();
-      }
-   }, [selectedSpecialty]);
+   // CARREGAMENTO inicial de dados
+useEffect(() => {
+  loadInitialData();
+}, []);
 
-   const loadInitialData = async () => {
-      try {
-         setLoading(true);
-         const [specialtiesData, doctorsData] = await Promise.all([
-            specialtiesApiService.getAllSpecialties(),
-            authApiService.getAllDoctors(),
-         ]);
-         
-         setSpecialties(specialtiesData);
-         setDoctors(doctorsData);
-      } catch (error) {
-         console.error('Erro ao carregar dados:', error);
-         Alert.alert('Erro', 'Não foi possível carregar os dados. Tente novamente.');
-      } finally {
-         setLoading(false);
-      }
-   };
+useEffect(() => {
+  if (selectedSpecialty) {
+    loadDoctorsBySpecialty(selectedSpecialty);
+  } else {
+    loadAllDoctors();
+  }
+}, [selectedSpecialty]);
 
-   const loadAllDoctors = async () => {
-      try {
-         const doctorsData = await authApiService.getAllDoctors();
-         setDoctors(doctorsData);
-      } catch (error) {
-         console.error('Erro ao carregar médicos:', error);
-      }
-   };
+const loadInitialData = async () => {
+  try {
+    setLoading(true);
+    const [specialtiesData] = await Promise.all([
+      specialtiesApiService.getAllSpecialties(),
+    ]);
+    setSpecialties(specialtiesData);
+    await loadAllDoctors();
+  } catch (error) {
+    console.error('Erro ao carregar dados iniciais:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
-   const loadDoctorsBySpecialty = async (specialty: string) => {
-      try {
-         const doctorsData = await authApiService.getDoctorsBySpecialty(specialty);
-         setDoctors(doctorsData);
-         // Reset da seleção de médico quando muda a especialidade
-         setSelectedDoctor('');
-      } catch (error) {
-         console.error('Erro ao carregar médicos por especialidade:', error);
-      }
-   };
+const loadAllDoctors = async () => {
+  try {
+    const doctorsData = await authApiService.getAllDoctors();
+    setDoctors(doctorsData);
+  } catch (error) {
+    console.error('Erro ao carregar médicos:', error);
+  }
+};
+
+const loadDoctorsBySpecialty = async (specialty: string) => {
+  try {
+    const doctorsData = await authApiService.getDoctorsBySpecialty(specialty);
+    setDoctors(doctorsData);
+  } catch (error) {
+    console.error('Erro ao carregar médicos por especialidade:', error);
+  }
+};
 
    const validateDate = (inputDate: string) => {
       const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;

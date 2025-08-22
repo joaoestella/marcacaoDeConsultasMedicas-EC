@@ -11,6 +11,54 @@ import Header from '../components/Header';
 import DoctorList from '../components/DoctorList';
 import TimeSlotList from '../components/TimeSlotList';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// IMPORTAÇÕES da API real
+import { authApiService } from '../services/authApi';
+import { User } from '../types/auth';
+
+// ESTADOS para dados da API
+const [doctors, setDoctors] = useState<User[]>([]);
+const [loadingDoctors, setLoadingDoctors] = useState(true);
+
+// CARREGAMENTO ao montar componente
+useEffect(() => {
+  loadDoctors();
+}, []);
+
+const loadDoctors = async () => {
+  try {
+    setLoadingDoctors(true);
+    const doctorsData = await authApiService.getAllDoctors();
+    setDoctors(doctorsData);
+  } catch (error) {
+    console.error('Erro ao carregar médicos:', error);
+    setError('Erro ao carregar médicos. Tente novamente.');
+  } finally {
+    setLoadingDoctors(false);
+  }
+};
+
+// CONVERSÃO de User[] para Doctor[]
+const convertUsersToDoctors = (users: User[]): Doctor[] => {
+  return users.map(user => ({
+    id: user.id,
+    name: user.name,
+    specialty: user.role === 'doctor' && 'specialty' in user 
+      ? user.specialty 
+      : 'Especialidade não informada',
+    image: user.image
+  }));
+};
+
+// USO de dados reais
+{loadingDoctors ? (
+  <ErrorText>Carregando médicos...</ErrorText>
+) : (
+  <DoctorList
+    doctors={convertUsersToDoctors(doctors)} // Dados reais convertidos
+    onSelectDoctor={setSelectedDoctor}
+    selectedDoctorId={selectedDoctor?.id}
+  />
+)}
 
 type CreateAppointmentScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'CreateAppointment'>;
@@ -34,40 +82,6 @@ interface Doctor {
   specialty: string;
   image: string;
 }
-
-// Lista de médicos disponíveis
-const availableDoctors: Doctor[] = [
-  {
-    id: '1',
-    name: 'Dr. João Silva',
-    specialty: 'Cardiologia',
-    image: 'https://randomuser.me/api/portraits/men/1.jpg',
-  },
-  {
-    id: '2',
-    name: 'Dra. Maria Santos',
-    specialty: 'Pediatria',
-    image: 'https://randomuser.me/api/portraits/women/1.jpg',
-  },
-  {
-    id: '3',
-    name: 'Dr. Pedro Oliveira',
-    specialty: 'Ortopedia',
-    image: 'https://randomuser.me/api/portraits/men/2.jpg',
-  },
-  {
-    id: '4',
-    name: 'Dra. Ana Costa',
-    specialty: 'Dermatologia',
-    image: 'https://randomuser.me/api/portraits/women/2.jpg',
-  },
-  {
-    id: '5',
-    name: 'Dr. Carlos Mendes',
-    specialty: 'Oftalmologia',
-    image: 'https://randomuser.me/api/portraits/men/3.jpg',
-  },
-];
 
 const CreateAppointmentScreen: React.FC = () => {
   const { user } = useAuth();
@@ -139,14 +153,6 @@ const CreateAppointmentScreen: React.FC = () => {
           onSelectTime={setSelectedTime}
           selectedTime={selectedTime}
         />
-
-        <SectionTitle>Selecione um Médico</SectionTitle>
-        <DoctorList
-          doctors={availableDoctors}
-          onSelectDoctor={setSelectedDoctor}
-          selectedDoctorId={selectedDoctor?.id}
-        />
-
         {error ? <ErrorText>{error}</ErrorText> : null}
 
         <Button
