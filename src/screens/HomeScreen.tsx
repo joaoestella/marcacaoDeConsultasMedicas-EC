@@ -3,7 +3,7 @@ import styled from 'styled-components/native';
 import { FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { Button, Icon } from 'react-native-elements';
 import { FontAwesome } from '@expo/vector-icons';
-import { HeaderContainer, HeaderTitle } from '../components/Header';
+import Header from '../components/Header';
 import theme from '../styles/theme';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,50 +14,55 @@ import { useFocusEffect } from '@react-navigation/native';
 import { authApiService } from '../services/authApi';
 import { User } from '../types/auth';
 
-// ESTADO para médicos da API
-const [doctors, setDoctors] = useState<User[]>([]);
-
-// FUNÇÃO para carregar médicos da API
-const loadDoctors = async () => {
-  try {
-    const doctorsData = await authApiService.getAllDoctors();
-    setDoctors(doctorsData);
-  } catch (error) {
-    console.error('Erro ao carregar médicos:', error);
-  }
+type HomeScreenProps = {
+  navigation: NativeStackNavigationProp<RootStackParamList, 'Home'>;
 };
 
-// CARREGAMENTO automático
-useFocusEffect(
-  React.useCallback(() => {
-    loadAppointments();
-    loadDoctors(); // Carrega médicos da API
-  }, [])
-);
+// Médicos agora vêm da API - dados removidos
 
-// BUSCA em dados reais
-const getDoctorInfo = (doctorId: string): User | undefined => {
-  return doctors.find(doctor => doctor.id === doctorId);
-};
+const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [doctors, setDoctors] = useState<User[]>([]);
 
-// RENDERIZAÇÃO com dados reais
-const renderAppointment = ({ item }: { item: Appointment }) => {
-  const doctor = getDoctorInfo(item.doctorId);
-  
-  return (
-    <AppointmentCard>
-      <DoctorImage source={{ uri: doctor?.image || 'https://via.placeholder.com/100' }} />
-      <InfoContainer>
-        <DoctorName>{doctor?.name || 'Médico não encontrado'}</DoctorName>
-        <DoctorSpecialty>
-          {doctor?.role === 'doctor' && 'specialty' in doctor 
-            ? doctor.specialty 
-            : 'Especialidade não encontrada'}
-        </DoctorSpecialty>
-      </InfoContainer>
-    </AppointmentCard>
+  const loadAppointments = async () => {
+    try {
+      const storedAppointments = await AsyncStorage.getItem('appointments');
+      if (storedAppointments) {
+        setAppointments(JSON.parse(storedAppointments));
+      }
+    } catch (error) {
+      console.error('Erro ao carregar consultas:', error);
+    }
+  };
+
+  const loadDoctors = async () => {
+    try {
+      const doctorsData = await authApiService.getAllDoctors();
+      setDoctors(doctorsData);
+      console.log(`${doctorsData.length} médicos carregados no HomeScreen`);
+    } catch (error) {
+      console.error('Erro ao carregar médicos no HomeScreen:', error);
+      // Não mostra erro para o usuário no HomeScreen, apenas loga
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadAppointments();
+      loadDoctors();
+    }, [])
   );
-};
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([loadAppointments(), loadDoctors()]);
+    setRefreshing(false);
+  };
+
+  const getDoctorInfo = (doctorId: string): User | undefined => {
+    return doctors.find(doctor => doctor.id === doctorId);
+  };
 
   const renderAppointment = ({ item }: { item: Appointment }) => {
     const doctor = getDoctorInfo(item.doctorId);
@@ -67,7 +72,11 @@ const renderAppointment = ({ item }: { item: Appointment }) => {
         <DoctorImage source={{ uri: doctor?.image || 'https://via.placeholder.com/100' }} />
         <InfoContainer>
           <DoctorName>{doctor?.name || 'Médico não encontrado'}</DoctorName>
-          <DoctorSpecialty>{doctor?.specialty || 'Especialidade não encontrada'}</DoctorSpecialty>
+          <DoctorSpecialty>
+            {doctor?.role === 'doctor' && 'specialty' in doctor 
+              ? doctor.specialty 
+              : 'Especialidade não encontrada'}
+          </DoctorSpecialty>
           <DateTime>{new Date(item.date).toLocaleDateString()} - {item.time}</DateTime>
           <Description>{item.description}</Description>
           <Status status={item.status}>
@@ -88,9 +97,10 @@ const renderAppointment = ({ item }: { item: Appointment }) => {
 
   return (
     <Container>
-      <HeaderContainer>
-        <HeaderTitle>Minhas Consultas</HeaderTitle>
-      </HeaderContainer>
+      <Header />
+      <TitleContainer>
+        <Title>Minhas Consultas</Title>
+      </TitleContainer>
 
       <Content>
         <Button
@@ -216,6 +226,18 @@ const EmptyText = styled.Text`
   color: ${theme.colors.text};
   opacity: 0.6;
   margin-top: ${theme.spacing.large}px;
+`;
+
+const TitleContainer = styled.View`
+  padding: 16px;
+  background-color: ${theme.colors.background};
+`;
+
+const Title = styled.Text`
+  font-size: 24px;
+  font-weight: bold;
+  color: ${theme.colors.text};
+  text-align: center;
 `;
 
 export default HomeScreen;

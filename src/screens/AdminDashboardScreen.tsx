@@ -9,9 +9,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../types/navigation';
 import theme from '../styles/theme';
 import Header from '../components/Header';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import UserManagement from '../components/UserManagement';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AdminDashboardScreenProps = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'AdminDashboard'>;
@@ -123,7 +122,7 @@ const AdminDashboardScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Title>Painel Administrativo</Title>
 
-        {/* NOVO - Abas de navegação */}
+        {/* Abas de navegação */}
         <TabContainer>
           <TabButton 
             active={activeTab === 'appointments'} 
@@ -139,31 +138,65 @@ const AdminDashboardScreen: React.FC = () => {
           </TabButton>
         </TabContainer>
 
-        {/* CONTEÚDO CONDICIONAL baseado na aba ativa */}
         {activeTab === 'appointments' ? (
           <>
             <SectionTitle>Últimas Consultas</SectionTitle>
-            {/* ... código existente das consultas ... */}
+        {loading ? (
+          <LoadingText>Carregando dados...</LoadingText>
+        ) : appointments.length === 0 ? (
+          <EmptyText>Nenhuma consulta agendada</EmptyText>
+        ) : (
+          appointments.map((appointment) => (
+            <AppointmentCard key={appointment.id}>
+              <ListItem.Content>
+                <ListItem.Title style={styles.doctorName as TextStyle}>
+                  {appointment.doctorName}
+                </ListItem.Title>
+                <ListItem.Subtitle style={styles.specialty as TextStyle}>
+                  {appointment.specialty}
+                </ListItem.Subtitle>
+                <Text style={styles.dateTime as TextStyle}>
+                  {appointment.date} às {appointment.time}
+                </Text>
+                <StatusBadge status={appointment.status}>
+                  <StatusText status={appointment.status}>
+                    {getStatusText(appointment.status)}
+                  </StatusText>
+                </StatusBadge>
+                {appointment.status === 'pending' && (
+                  <ButtonContainer>
+                    <Button
+                      title="Confirmar"
+                      onPress={() => handleUpdateStatus(appointment.id, 'confirmed')}
+                      containerStyle={styles.actionButton as ViewStyle}
+                      buttonStyle={styles.confirmButton}
+                    />
+                    <Button
+                      title="Cancelar"
+                      onPress={() => handleUpdateStatus(appointment.id, 'cancelled')}
+                      containerStyle={styles.actionButton as ViewStyle}
+                      buttonStyle={styles.cancelButton}
+                    />
+                  </ButtonContainer>
+                )}
+              </ListItem.Content>
+            </AppointmentCard>
+          ))
+        )}
           </>
         ) : (
-          <UserManagement />
+          <UserManagement onSignOut={signOut} />
         )}
-
-        <Button
-          title="Sair"
-          onPress={signOut}
-          containerStyle={styles.button as ViewStyle}
-          buttonStyle={styles.logoutButton}
-        />
       </ScrollView>
     </Container>
   );
-
 };
 
 const styles = {
   scrollContent: {
     padding: 20,
+    paddingBottom: 40,
+    flexGrow: 1,
   },
   button: {
     marginBottom: 20,
@@ -209,6 +242,7 @@ const styles = {
 const Container = styled.View`
   flex: 1;
   background-color: ${theme.colors.background};
+  position: relative;
 `;
 
 const Title = styled.Text`
