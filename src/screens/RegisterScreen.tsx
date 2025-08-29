@@ -191,5 +191,4 @@ const UserTypeText = styled.Text<{ selected: boolean }>`
   font-size: 14px;
 `;
 
-
 export default RegisterScreen; 
